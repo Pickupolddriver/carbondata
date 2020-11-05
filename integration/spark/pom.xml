@@ -84,6 +84,11 @@
   <dependencies>
     <!-- carbon -->
     <dependency>
+      <groupId>org.antlr</groupId>
+      <artifactId>antlr4-runtime</artifactId>
+      <version>4.8</version>
+    </dependency>
+    <dependency>
       <groupId>org.apache.carbondata</groupId>
       <artifactId>carbondata-hive</artifactId>
       <version>${project.version}</version>
