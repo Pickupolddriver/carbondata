@@ -350,6 +350,8 @@ class MergeTestCase extends QueryTest with BeforeAndAfterAll {
     matches ++= Seq(WhenNotMatched().addAction(InsertAction(insertMap)))
 
     val st = System.currentTimeMillis()
+
+
     CarbonMergeDataSetCommand(dwSelframe,
       odsframe,
       MergeDataSetMatches(col("A.id").equalTo(col("B.id")), matches.toList)).run(sqlContext.sparkSession)
