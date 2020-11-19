@@ -2,7 +2,7 @@ package org.apache.model;
 
 import java.util.List;
 
-public class TmpTable extends BaseClass {
+public class TmpTable {
 
     String database;
     String table;

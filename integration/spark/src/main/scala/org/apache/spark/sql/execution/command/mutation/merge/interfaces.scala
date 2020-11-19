@@ -71,9 +71,9 @@ case class WhenNotMatchedAndExistsOnlyOnTarget(expression: Option[Column] = None
   override def getExp: Option[Column] = expression
 }
 
-case class UpdateAction(updateMap: Map[Column, Column]) extends MergeAction
+case class UpdateAction(updateMap: Map[Column, Column], isStar:Boolean = false) extends MergeAction
 
-case class InsertAction(insertMap: Map[Column, Column]) extends MergeAction
+case class InsertAction(insertMap: Map[Column, Column], isStar: Boolean = false) extends MergeAction
 
 /**
  * It inserts the history data into history table

@@ -2,43 +2,48 @@ package org.apache.model;
 
 public class CarbonJoinExpression {
 
-    //This class will store the joinExpression
-    TmpColumn leftCol;
-    TmpColumn rightCol;
-    String operator;
+    String srcTable;
+    String srcCol;
+    String tgTable;
+    String tgCol;
 
-    public CarbonJoinExpression() {
-
+    public CarbonJoinExpression(String srcTable, String srcCol, String tgTable, String tgCol) {
+        this.srcTable = srcTable;
+        this.srcCol = srcCol;
+        this.tgTable = tgTable;
+        this.tgCol = tgCol;
     }
 
-    public CarbonJoinExpression(TmpColumn leftCol, TmpColumn rightCol, String operator) {
-        this.leftCol = leftCol;
-        this.rightCol = rightCol;
-        this.operator = operator;
+    public String getSrcTable() {
+        return srcTable;
     }
 
-    public TmpColumn getLeftCol() {
-        return leftCol;
+    public void setSrcTable(String srcTable) {
+        this.srcTable = srcTable;
     }
 
-    public void setLeftCol(TmpColumn leftCol) {
-        this.leftCol = leftCol;
+    public String getSrcCol() {
+        return srcCol;
     }
 
-    public TmpColumn getRightCol() {
-        return rightCol;
+    public void setSrcCol(String srcCol) {
+        this.srcCol = srcCol;
     }
 
-    public void setRightCol(TmpColumn rightCol) {
-        this.rightCol = rightCol;
+    public String getTgTable() {
+        return tgTable;
     }
 
-    public String getOperator() {
-        return operator;
+    public void setTgTable(String tgTable) {
+        this.tgTable = tgTable;
     }
 
-    public void setOperator(String operator) {
-        this.operator = operator;
+    public String getTgCol() {
+        return tgCol;
+    }
+
+    public void setTgCol(String tgCol) {
+        this.tgCol = tgCol;
     }
 }
 

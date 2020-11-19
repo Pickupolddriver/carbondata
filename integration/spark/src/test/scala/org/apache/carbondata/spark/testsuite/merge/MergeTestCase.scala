@@ -330,6 +330,33 @@ class MergeTestCase extends QueryTest with BeforeAndAfterAll {
     checkAnswer(sql("select count(*) from order where id like 'newid%'"), Seq(Row(2)))
   }
 
+  test("test basic merge update and insert with out condition") {
+    sql("drop table if exists order")
+    val (dwSelframe, odsframe) = initialize
+
+    var matches = Seq.empty[MergeMatch]
+    val updateMap = Map(col("id") -> col("A.id"),
+      col("price") -> expr("B.price + 1"),
+      col("state") -> col("B.state"))
+
+    val insertMap = Map(col("id") -> col("B.id"),
+      col("price") -> col("B.price"),
+      col("state") -> col("B.state"))
+
+    matches ++= Seq(WhenMatched().addAction(DeleteAction()))
+    //matches ++= Seq(WhenNotMatched().addAction(InsertAction(insertMap)))
+
+    val st = System.currentTimeMillis()
+
+
+    CarbonMergeDataSetCommand(dwSelframe,
+      odsframe,
+      MergeDataSetMatches(col("A.id").equalTo(col("B.id")), matches.toList)).run(sqlContext.sparkSession)
+      assert(true)
+//    checkAnswer(sql("select count(*) from order where id like 'newid%'"), Seq(Row(2)))
+//    checkAnswer(sql("select count(*) from order where state = 2"), Seq(Row(2)))
+  }
+
   test("test merge update and insert with out condition") {
     sql("drop table if exists order")
     val (dwSelframe, odsframe) = initialize

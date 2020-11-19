@@ -12,9 +12,13 @@ import org.apache.spark.sql.catalyst.parser.ParserInterface;
 import org.apache.spark.sql.execution.command.mutation.merge.DeleteAction;
 import org.apache.spark.sql.execution.command.mutation.merge.InsertAction;
 import org.apache.spark.sql.execution.command.mutation.merge.MergeAction;
+import org.apache.spark.sql.execution.command.mutation.merge.UpdateAction;
+import org.apache.spark.util.SparkUtil;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 public class SimpleSqlVisitor extends CarbonSqlBaseBaseVisitor {
 
@@ -36,44 +40,51 @@ public class SimpleSqlVisitor extends CarbonSqlBaseBaseVisitor {
 
     @Override
     public MergeAction visitAssignmentList(CarbonSqlBaseParser.AssignmentListContext ctx) {
-        //  UPDATE SET * /
         //  UPDATE SET assignmentList
-        // This can only be UpdateAction
-        //UpdateAction updateAction = new UpdateAction();
-        return null;
+        ctx.getChildCount();
+        // we need to mark down the
+        Map<Column, Column> map = new HashMap<>();
+        for (int currIdx = 0; currIdx < ctx.getChildCount(); currIdx++) {
+            if (ctx.getChild(currIdx) instanceof CarbonSqlBaseParser.AssignmentContext) {
+                //Assume the actions are all use to pass value
+                String left = ctx.getChild(currIdx).getChild(0).getText();
+                String right = ctx.getChild(currIdx).getChild(2).getText();
+                map.put(new Column(left), new Column(right));
+            }
+        }
+
+        return new UpdateAction(SparkUtil.convertMap(map), false);
     }
 
     @Override
     public MergeAction visitMatchedAction(CarbonSqlBaseParser.MatchedActionContext ctx) {
-        //  For matched action, it can be
-        //  DELETE /
-        //  UPDATE SET * /
-        //  UPDATE SET assignmentList
         int childCount = ctx.getChildCount();
         if (childCount == 1) {
             // when matched ** delete
             return new DeleteAction();
         } else {
-            System.out.println("\n VisitMathedAction need to be implement");
-            //todo put update map into updateAction constructor
-            // Update set ()
-            return visitAssignmentList((CarbonSqlBaseParser.AssignmentListContext) ctx.getChild(ctx.getChildCount() - 1));
+            if (ctx.getChild(ctx.getChildCount() - 1) instanceof CarbonSqlBaseParser.AssignmentListContext) {
+                //UPDATE SET assignmentList
+                return visitAssignmentList((CarbonSqlBaseParser.AssignmentListContext) ctx.getChild(ctx.getChildCount() - 1));
+            } else {
+                //UPDATE SET *
+                return new UpdateAction(null, true);
+            }
         }
     }
 
     @Override
     public InsertAction visitNotMatchedAction(CarbonSqlBaseParser.NotMatchedActionContext ctx) {
+
         // FOR NOT MATCH ACTION,
         // INSERT *
         // INSERT '(' columns=multipartIdentifierList ')'
         //        VALUES '(' expression (',' expression)* ')'
 
-        //This function seems harder than visit matchedAction
+        //todo need to implement this problems
         if (ctx.getChildCount() <= 2) {
             //INSERT *
-            //Build Maps
-//            return InsertAction.apply();
-            return null;
+            return InsertAction.apply(null, true);
         } else {
             //Iterate the children, get the multiPartIdentifierList and Expression Lists
             // Construct Insert Map --> get the correspond col name
@@ -97,8 +108,8 @@ public class SimpleSqlVisitor extends CarbonSqlBaseBaseVisitor {
             }
             //Build Maps?
 //            return InsertAction.apply();
-            return null;
         }
+        return null;
     }
 
 
@@ -137,83 +148,99 @@ public class SimpleSqlVisitor extends CarbonSqlBaseBaseVisitor {
         return null;
     }
 
+    public boolean containsWhenMatchedPredicateExpression(int childCount) {
+        if (childCount > 4) {
+            return true;
+        }
+        return false;
+    }
+
+    public boolean containsWhenNotMatchedPredicateExpression(int childCount) {
+        if (childCount > 5) {
+            return true;
+        }
+        return false;
+    }
+
     @Override
     public MergeInto visitMergeInto(CarbonSqlBaseParser.MergeIntoContext ctx) {
-        // Get the join expression
-        Expression joinExpression = null;
+        TmpTable targetTable = visitMultipartIdentifier(ctx.target);
+        TmpTable sourceTable = visitMultipartIdentifier(ctx.source);
 
-        try {
-            // The join Expression is PredicatedNode
-            joinExpression = sparkParser.parseExpression(ctx.mergeCondition.getText());
-        } catch (ParseException e) {
-            e.printStackTrace();
-        }
-
+        //Once get these two table,
+        //We can try to get CarbonTable
 
         //Build a matched clause list to store the when matched and when not matched clause
         int size = ctx.getChildCount();
         int currIdx = 0;
-        ArrayList<Expression> matchedExpr = new ArrayList<>();
-        ArrayList<MergeAction> matchedAct = new ArrayList<>();
-        ArrayList<Expression> notMatchedExpr = new ArrayList<>();
-        ArrayList<MergeAction> notMatchedAct = new ArrayList<>();
+        Expression joinExpression = null;
+        List<Expression> mergeExpressions = new ArrayList<>();
+        List<MergeAction> mergeActions = new ArrayList<>();
 
-        // ArrayList<MergeMatch> matches=new ArrayList<>();
         // There should be two List to store the result retrieve from when matched / when not matched context
         while (currIdx < size) {
-            if(ctx.getChild(currIdx) instanceof  CarbonSqlBaseParser.PredicatedContext){
+            if (ctx.getChild(currIdx) instanceof CarbonSqlBaseParser.PredicatedContext) {
                 //This branch will visit the Join Expression
                 ctx.getChild(currIdx).getChildCount();
-            }else if (ctx.getChild(currIdx) instanceof CarbonSqlBaseParser.MatchedClauseContext) {
+                joinExpression = this.visitPredicated((CarbonSqlBaseParser.PredicatedContext) ctx.getChild(currIdx), "");
+            } else if (ctx.getChild(currIdx) instanceof CarbonSqlBaseParser.MatchedClauseContext) {
+                //This branch will deal with the Matched Clause
+                Expression whenMatchedExpression = null;
                 //Get the whenMatched expression
                 try {
-                    // We need to make sure which data structure to use to store the matchedExpr and matchedAction
-                    // WHEN MATCHED THEN DELETE
-                    // It need to check if boolean Expression exist
-                    if (ctx.getChild(currIdx).getChildCount() > 4) {
-                        Expression whenMatchedExpression = sparkParser.parseExpression(((CarbonSqlBaseParser.MatchedClauseContext) ctx.getChild(currIdx)).booleanExpression().getText());
-                        matchedExpr.add(whenMatchedExpression);
-
+                    if (this.containsWhenMatchedPredicateExpression(ctx.getChild(currIdx).getChildCount())) {
+                        whenMatchedExpression = sparkParser.parseExpression(((CarbonSqlBaseParser.MatchedClauseContext) ctx.getChild(currIdx)).booleanExpression().getText());
                     } else {
-                        //Should we add something here??
-                        System.out.println("No booleanExpression" + ctx.getChildCount());
-                        //Add a empty When not matched
-//                        WhenMatched whenMatched=new WhenMatched().addAction();
+                        whenMatchedExpression = null;
                     }
                 } catch (ParseException e) {
                     e.printStackTrace();
                 }
-                matchedAct.add(visitMatchedClause((CarbonSqlBaseParser.MatchedClauseContext) ctx.getChild(currIdx)));
+                mergeExpressions.add(whenMatchedExpression);
+                mergeActions.add(visitMatchedAction((CarbonSqlBaseParser.MatchedActionContext) ctx.getChild(currIdx).getChild(ctx.getChild(currIdx).getChildCount() - 1)));
             } else if (ctx.getChild(currIdx) instanceof CarbonSqlBaseParser.NotMatchedClauseContext) {
-                //Get the whenNotMatched expression
+                //This branch will deal with the Matched Clause
+                Expression whenNotMatchedExpression = null;
+                //Get the whenMatched expression
                 try {
-                    // WHEN NOT MATCHED THEN XXXX
-                    if (ctx.getChild(currIdx).getChildCount() > 5) {
-                        Expression whenNotMatchedExpression = sparkParser.parseExpression(((CarbonSqlBaseParser.NotMatchedClauseContext) ctx.getChild(currIdx)).booleanExpression().getText());
-                        notMatchedExpr.add(whenNotMatchedExpression);
+                    if (this.containsWhenMatchedPredicateExpression(ctx.getChild(currIdx).getChildCount())) {
+                        whenNotMatchedExpression = sparkParser.parseExpression(((CarbonSqlBaseParser.MatchedClauseContext) ctx.getChild(currIdx)).booleanExpression().getText());
+                    } else {
+                        whenNotMatchedExpression = null;
                     }
                 } catch (ParseException e) {
                     e.printStackTrace();
                 }
-                notMatchedAct.add(visitNotMatchedClause((CarbonSqlBaseParser.NotMatchedClauseContext) ctx.getChild(currIdx)));
+                mergeExpressions.add(whenNotMatchedExpression);
+                mergeActions.add(visitNotMatchedAction((CarbonSqlBaseParser.NotMatchedActionContext) ctx.getChild(currIdx).getChild(ctx.getChildCount() - 1)));
             } else {
                 // Do nothing
             }
-            currIdx++;
+             currIdx++;
         }
-        //After Iteration, we can construct the KV of the expression and mergeActions
-        System.out.println("Check the not/matchExpr and not/matchActs");
-        //todo add the Expression to MERGEINT
-        //MergeInto
-
-        return new MergeInto(visitMultipartIdentifier(ctx.target), visitMultipartIdentifier(ctx.source), joinExpression);
+        return new MergeInto(targetTable, sourceTable, joinExpression, mergeExpressions, mergeActions);
     }
 
     @Override
     public CarbonJoinExpression visitComparison(CarbonSqlBaseParser.ComparisonContext ctx) {
+        // we need to get left Expression and Right Expression
+        // Even get the table name and col name
         ctx.getText();
+        String t1Name = ctx.left.getChild(0).getChild(0).getText();
+        String c1Name = ctx.left.getChild(0).getChild(2).getText();
+        String t2Name = ctx.right.getChild(0).getChild(0).getText();
+        String c2Name = ctx.right.getChild(0).getChild(2).getText();
+        return new CarbonJoinExpression(t1Name, c1Name, t2Name, c2Name);
+    }
 
-        return new CarbonJoinExpression();
+    public Expression visitComparison(CarbonSqlBaseParser.ComparisonContext ctx, String x) {
+        Expression expression = null;
+        try {
+            expression = sparkParser.parseExpression(ctx.getText());
+        } catch (ParseException e) {
+            e.printStackTrace();
+        }
+        return expression;
     }
 
 
@@ -225,14 +252,14 @@ public class SimpleSqlVisitor extends CarbonSqlBaseBaseVisitor {
 
     @Override
     public CarbonJoinExpression visitPredicated(CarbonSqlBaseParser.PredicatedContext ctx) {
-        CarbonJoinExpression mc = visitComparison((CarbonSqlBaseParser.ComparisonContext) ctx.getChild(0));
-        return mc;
+        CarbonJoinExpression carbonJoinExpression = visitComparison((CarbonSqlBaseParser.ComparisonContext) ctx.getChild(0));
+        return carbonJoinExpression;
     }
 
 
-    public CarbonJoinExpression visitPredicated(CarbonSqlBaseParser.PredicatedContext ctx, String type) {
-        CarbonJoinExpression mc = visitComparison((CarbonSqlBaseParser.ComparisonContext) ctx.getChild(0).getChild(0).getChild(1).getChild(0).getChild(0));
-        return mc;
+    public Expression visitPredicated(CarbonSqlBaseParser.PredicatedContext ctx, String type) {
+        Expression expression = visitComparison((CarbonSqlBaseParser.ComparisonContext) ctx.getChild(0), "");
+        return expression;
     }
 
     @Override

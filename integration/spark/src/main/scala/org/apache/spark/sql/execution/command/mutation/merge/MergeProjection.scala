@@ -58,8 +58,8 @@ case class MergeProjection(
   private def generateProjection: (Projection, Array[Expression]) = {
     val existingDsOutput = rltn.carbonRelation.schema.toAttributes
     val colsMap = mergeAction match {
-      case UpdateAction(updateMap) => updateMap
-      case InsertAction(insertMap) => insertMap
+      case UpdateAction(updateMap,boolean: Boolean) => updateMap
+      case InsertAction(insertMap,boolean: Boolean) => insertMap
       case _ => null
     }
     if (colsMap != null) {

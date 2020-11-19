@@ -1,18 +1,23 @@
 package org.apache.model;
 
 import org.apache.spark.sql.catalyst.expressions.Expression;
-import org.apache.spark.sql.execution.command.mutation.merge.MergeDataSetMatches;
+import org.apache.spark.sql.execution.command.mutation.merge.MergeAction;
+
+import java.util.List;
 
 public class MergeInto {
     TmpTable target;
     TmpTable source;
     Expression mergeCondition;
-    MergeDataSetMatches mergeDataSetMatches;
+    List<Expression> mergeExpressions;
+    List<MergeAction> mergeActions;
 
-    public MergeInto(TmpTable target, TmpTable source, Expression mergeCondition) {
+    public MergeInto(TmpTable target, TmpTable source, Expression mergeCondition, List<Expression> mergeExpressions, List<MergeAction> mergeActions) {
         this.target = target;
         this.source = source;
         this.mergeCondition = mergeCondition;
+        this.mergeExpressions = mergeExpressions;
+        this.mergeActions = mergeActions;
     }
 
     public TmpTable getTarget() {
@@ -39,11 +44,19 @@ public class MergeInto {
         this.mergeCondition = mergeCondition;
     }
 
-    public MergeDataSetMatches getMergeDataSetMatches() {
-        return mergeDataSetMatches;
+    public List<Expression> getMergeExpressions() {
+        return mergeExpressions;
     }
 
-    public void setMergeDataSetMatches(MergeDataSetMatches mergeDataSetMatches) {
-        this.mergeDataSetMatches = mergeDataSetMatches;
+    public void setMergeExpressions(List<Expression> mergeExpressions) {
+        this.mergeExpressions = mergeExpressions;
+    }
+
+    public List<MergeAction> getMergeActions() {
+        return mergeActions;
+    }
+
+    public void setMergeActions(List<MergeAction> mergeActions) {
+        this.mergeActions = mergeActions;
     }
 }
