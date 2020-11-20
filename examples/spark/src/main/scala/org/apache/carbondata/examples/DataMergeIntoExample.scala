@@ -1,7 +1,5 @@
 package org.apache.carbondata.examples
 
-import java.io.File
-
 import CarbonSqlCodeGen.{CarbonSqlBaseLexer, CarbonSqlBaseParser}
 import org.antlr.v4.runtime.{CharStreams, CommonTokenStream}
 import org.apache.carbondata.examples.util.ExampleUtils
@@ -18,46 +16,46 @@ object DataMergeIntoExample {
   }
 
   def exampleBody(spark: SparkSession): Unit = {
-    spark.sql("DROP TABLE IF EXISTS TARGET_TABLE")
-    spark.sql("DROP TABLE IF EXISTS SOURCE_TABLE")
+    spark.sql("DROP TABLE IF EXISTS A")
+    spark.sql("DROP TABLE IF EXISTS B")
 
     // Create table
     spark.sql(
       s"""
-         | CREATE TABLE IF NOT EXISTS TARGET_TABLE(
-         |   ID Int,
-         |   PRICE Int,
-         |   STATE String
+         | CREATE TABLE IF NOT EXISTS A(
+         |   id Int,
+         |   price Int,
+         |   state String
          | )
          | STORED AS carbondata
        """.stripMargin)
 
-    spark.sql(s"""INSERT INTO TARGET_TABLE VALUES (1,10,"MA")""")
-    spark.sql(s"""INSERT INTO TARGET_TABLE VALUES (2,20,"NY")""")
-    spark.sql(s"""INSERT INTO TARGET_TABLE VALUES (3,30,"NH")""")
+    spark.sql(s"""INSERT INTO A VALUES (1,10,"MA")""")
+    spark.sql(s"""INSERT INTO A VALUES (2,20,"NY")""")
+    spark.sql(s"""INSERT INTO A VALUES (3,30,"NH")""")
 
-    spark.sql(s"""SELECT count(*) FROM TARGET_TABLE""").show()
-    spark.sql(s"""SELECT * FROM TARGET_TABLE""").show()
+    spark.sql(s"""SELECT count(*) FROM A""").show()
+    spark.sql(s"""SELECT * FROM A""").show()
 
     // Create table2
     spark.sql(
       s"""
-         | CREATE TABLE IF NOT EXISTS SOURCE_TABLE(
-         |   ID Int,
-         |   PRICE Int,
-         |   STATE String
+         | CREATE TABLE IF NOT EXISTS B(
+         |   id Int,
+         |   price Int,
+         |   state String
          | )
          | STORED AS carbondata
        """.stripMargin)
 
-    spark.sql(s"""INSERT INTO SOURCE_TABLE VALUES (1,1,"MA")""")
-    spark.sql(s"""INSERT INTO SOURCE_TABLE VALUES (2,3,"NY")""")
-    spark.sql(s"""INSERT INTO SOURCE_TABLE VALUES (3,3,"NH")""")
+    spark.sql(s"""INSERT INTO B VALUES (1,1,"MA")""")
+    spark.sql(s"""INSERT INTO B VALUES (2,3,"NY")""")
+    spark.sql(s"""INSERT INTO B VALUES (3,3,"NH")""")
 
-    spark.sql(s"""SELECT count(*) FROM SOURCE_TABLE""").show()
-    spark.sql(s"""SELECT * FROM SOURCE_TABLE""").show()
+    spark.sql(s"""SELECT count(*) FROM B""").show()
+    spark.sql(s"""SELECT * FROM B""").show()
 
-    val sqlText = "MERGE INTO TARGET_TABLE USING SOURCE_TABLE ON TARGET_TABLE.ID=SOURCE_TABLE.ID WHEN MATCHED THEN DELETE"
+    val sqlText = "MERGE INTO A USING B ON A.ID=B.ID WHEN MATCHED THEN DELETE"
     val sparkParser = new SparkSqlParser(new SQLConf)
     val visitor = new SimpleSqlVisitor(sparkParser)
     val lexer = new CarbonSqlBaseLexer(CharStreams.fromString(sqlText))
@@ -72,9 +70,10 @@ object DataMergeIntoExample {
       convertMergeActionList(mergeInto.getMergeActions)
     ).processData(spark)
 
-    spark.sql(s"""SELECT * FROM TARGET_TABLE""").show()
+    println("Show table A")
+    spark.sql(s"""SELECT * FROM A""").show()
 
-    spark.sql("DROP TABLE IF EXISTS TARGET_TABLE")
-    spark.sql("DROP TABLE IF EXISTS SOURCE_TABLE")
+    spark.sql("DROP TABLE IF EXISTS A")
+    spark.sql("DROP TABLE IF EXISTS B")
   }
 }
