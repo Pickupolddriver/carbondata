@@ -24,35 +24,41 @@ case class MergeIntoSQLCommand(sourceTable: TmpTable,
     val tgDf = sparkSession.sql(s"""SELECT * FROM ${targetTable.getTable}""")
 
     var matches = Seq.empty[MergeMatch]
+    // Length of MergeExpression
     val mel: Int = mergeExpression.length
     for (x <- 0 until mel) {
       val currExpression: Expression = mergeExpression.apply(x)
       val currAction: MergeAction = mergeActions.apply(x)
-      //Convert the current Actions to Map
-
-      if (currAction.isInstanceOf[UpdateAction]) {
-        if (currAction.asInstanceOf[UpdateAction].isStar) {
-          val srcCols = srcDf.columns
-          val tgCols = tgDf.columns
-          currAction.asInstanceOf[UpdateAction].updateMap = Map[Column, Column]()
-          for (i <- 0 until srcCols.length) {
-            currAction.asInstanceOf[UpdateAction].updateMap.+=(col(tgCols.apply(i)) -> col(sourceTable.getTable + "." + srcCols.apply(i)))
+      // Use Pattern Matching
+      // Convert the current Actions to Map
+      // Since the delete action will delete the whole line, we don't need to build map here
+      currAction match {
+        case action: UpdateAction =>
+          if (action.isStar) {
+            val srcCols = srcDf.columns
+            val tgCols = tgDf.columns
+            action.updateMap = Map[Column, Column]()
+            for (i <- srcCols.indices) {
+              action.updateMap.+=(col(tgCols.apply(i)) -> col(sourceTable.getTable + "." + srcCols.apply(i)))
+            }
+          } else {
+            // if not star, it may contains fewer cols and may be expression rather than col
           }
-        } else {
-          // if not star, it may contains fewer cols and may be expression rather than col
-        }
-      } else if (currAction.isInstanceOf[InsertAction]) {
-        if (currAction.asInstanceOf[InsertAction].isStar) {
-          val srcCols = srcDf.columns
-          val tgCols = tgDf.columns
-          for (i <- 0 until srcCols.length) {
-            currAction.asInstanceOf[UpdateAction].updateMap.+= (col(tgCols.apply(i)) -> col(sourceTable.getTable + "." + srcCols.apply(i)))
+        case action: InsertAction =>
+          if (action.isStar) {
+            val srcCols = srcDf.columns
+            val tgCols = tgDf.columns
+            action.insertMap =Map[Column,Column]()
+            for (i <- srcCols.indices) {
+              action.insertMap.+=(col(tgCols.apply(i)) -> col(sourceTable.getTable + "." + srcCols.apply(i)))
+            }
+          } else {
+            // if not star, it may contains fewer cols and may be expression rather than col
           }
-        } else {
-          // if not star, it may contains fewer cols and may be expression rather than col
-        }
+        case _ =>
       }
 
+      // todo: Extract Method
       if (currExpression == null) {
         // According to the MergeAction to reGenerate the
         if (currAction.isInstanceOf[DeleteAction] || currAction.isInstanceOf[UpdateAction]) {
@@ -61,13 +67,14 @@ case class MergeIntoSQLCommand(sourceTable: TmpTable,
           matches ++= Seq(WhenNotMatched().addAction(currAction))
         }
       } else {
-        //todo: Build the map of insert/update from currExpression
+        // Since the mergeExpression is not null, we need to Initialize the WhenMatched/WhenNotMatched with the Expression
+        // Check the example to see how they initialize the matches
+        val carbonMergeExpression:Option[Column]=Option(Column(currExpression))
         if (currAction.isInstanceOf[DeleteAction] || currAction.isInstanceOf[UpdateAction]) {
-          WhenMatched().addAction(currAction)
+          matches ++= Seq(WhenMatched(carbonMergeExpression).addAction(currAction))
         } else {
-          WhenNotMatched().addAction(currAction)
+          matches ++= Seq(WhenNotMatched(carbonMergeExpression).addAction(currAction))
         }
-        matches ++= Seq()
       }
     }
 

@@ -80,7 +80,7 @@ public class SimpleSqlVisitor extends CarbonSqlBaseBaseVisitor {
         // INSERT *
         // INSERT '(' columns=multipartIdentifierList ')'
         //        VALUES '(' expression (',' expression)* ')'
-
+        ctx.getChildCount();
         //todo need to implement this problems
         if (ctx.getChildCount() <= 2) {
             //INSERT *
@@ -203,8 +203,8 @@ public class SimpleSqlVisitor extends CarbonSqlBaseBaseVisitor {
                 Expression whenNotMatchedExpression = null;
                 //Get the whenMatched expression
                 try {
-                    if (this.containsWhenMatchedPredicateExpression(ctx.getChild(currIdx).getChildCount())) {
-                        whenNotMatchedExpression = sparkParser.parseExpression(((CarbonSqlBaseParser.MatchedClauseContext) ctx.getChild(currIdx)).booleanExpression().getText());
+                    if (this.containsWhenNotMatchedPredicateExpression(ctx.getChild(currIdx).getChildCount())) {
+                        whenNotMatchedExpression = sparkParser.parseExpression(((CarbonSqlBaseParser.NotMatchedClauseContext) ctx.getChild(currIdx)).booleanExpression().getText());
                     } else {
                         whenNotMatchedExpression = null;
                     }
@@ -212,11 +212,11 @@ public class SimpleSqlVisitor extends CarbonSqlBaseBaseVisitor {
                     e.printStackTrace();
                 }
                 mergeExpressions.add(whenNotMatchedExpression);
-                mergeActions.add(visitNotMatchedAction((CarbonSqlBaseParser.NotMatchedActionContext) ctx.getChild(currIdx).getChild(ctx.getChildCount() - 1)));
+                mergeActions.add(visitNotMatchedAction((CarbonSqlBaseParser.NotMatchedActionContext) ctx.getChild(currIdx).getChild(ctx.getChild(currIdx).getChildCount() - 1)));
             } else {
                 // Do nothing
             }
-             currIdx++;
+            currIdx++;
         }
         return new MergeInto(targetTable, sourceTable, joinExpression, mergeExpressions, mergeActions);
     }
