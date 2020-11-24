@@ -1,3 +1,20 @@
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one or more
+ * contributor license agreements.  See the NOTICE file distributed with
+ * this work for additional information regarding copyright ownership.
+ * The ASF licenses this file to You under the Apache License, Version 2.0
+ * (the "License"); you may not use this file except in compliance with
+ * the License.  You may obtain a copy of the License at
+ *
+ *    http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 package org.apache.carbondata.examples
 
 import CarbonSqlCodeGen.{CarbonSqlBaseLexer, CarbonSqlBaseParser}
@@ -11,12 +28,14 @@ object DataMergeIntoExample {
 
   def main(args: Array[String]) {
     val spark = ExampleUtils.createSparkSession("DataManagementExample")
-    // deleteExampleBody(spark)
-    // deleteWithExpressionExample(spark)
-    // updateExampleBody(spark)
-    // updateWithExpressionExample(spark)
-    // insertExampleBody(spark)
-    insertWithExpressionExampleBody(spark)
+    deleteExampleBody(spark)
+    deleteWithExpressionExample(spark)
+    updateExampleBody(spark)
+    updateWithExpressionExample(spark)
+    updateSpecificColWithExpressionExample(spark)
+    insertExampleBody(spark)
+    insertWithExpressionExample(spark)
+    insertSpecificColWithExpressionExample(spark)
     spark.close()
   }
 
@@ -45,10 +64,10 @@ object DataMergeIntoExample {
          | STORED AS carbondata
        """.stripMargin)
 
-    spark.sql(s"""INSERT INTO A VALUES (1,10,"MA")""")
-    spark.sql(s"""INSERT INTO A VALUES (2,20,"NY")""")
-    spark.sql(s"""INSERT INTO A VALUES (3,30,"NH")""")
-    spark.sql(s"""INSERT INTO A VALUES (4,40,"FL")""")
+    spark.sql(s"""INSERT INTO A VALUES (1,100,"MA")""")
+    spark.sql(s"""INSERT INTO A VALUES (2,200,"NY")""")
+    spark.sql(s"""INSERT INTO A VALUES (3,300,"NH")""")
+    spark.sql(s"""INSERT INTO A VALUES (4,400,"FL")""")
 
     spark.sql(s"""SELECT count(*) FROM A""").show()
     spark.sql(s"""SELECT * FROM A""").show()
@@ -126,6 +145,26 @@ object DataMergeIntoExample {
     dropTables(spark)
   }
 
+  def updateSpecificColWithExpressionExample(spark: SparkSession): Unit = {
+    dropTables(spark)
+    initTable(spark)
+    //In this example, it will only update the state
+    val sqlText = "MERGE INTO A USING B ON A.ID=B.ID WHEN MATCHED AND A.ID=2 THEN UPDATE SET STATE=B.STATE"
+    executeMergeSqlText(spark, sqlText)
+    println("Show table A")
+    spark.sql(s"""SELECT * FROM A""").show()
+    dropTables(spark)
+  }
+
+  def updateSpecificMultiColWithExpressionExample(spark: SparkSession): Unit = {
+    dropTables(spark)
+    initTable(spark)
+    val sqlText = "MERGE INTO A USING B ON A.ID=B.ID WHEN MATCHED AND A.ID=2 THEN UPDATE SET A.STATE=B.STATE, A.PRICE=B.PRICE"
+    executeMergeSqlText(spark, sqlText)
+    println("Show table A")
+    spark.sql(s"""SELECT * FROM A""").show()
+    dropTables(spark)
+  }
 
   def insertExampleBody(spark: SparkSession): Unit = {
     dropTables(spark)
@@ -137,10 +176,20 @@ object DataMergeIntoExample {
     dropTables(spark)
   }
 
-  def insertWithExpressionExampleBody(spark: SparkSession): Unit = {
+  def insertWithExpressionExample(spark: SparkSession): Unit = {
     dropTables(spark)
     initTable(spark)
     val sqlText = "MERGE INTO A USING B ON A.ID=B.ID WHEN NOT MATCHED AND B.ID=7 THEN INSERT *"
+    executeMergeSqlText(spark, sqlText)
+    println("Show table A")
+    spark.sql(s"""SELECT * FROM A""").show()
+    dropTables(spark)
+  }
+
+  def insertSpecificColWithExpressionExample(spark: SparkSession): Unit = {
+    dropTables(spark)
+    initTable(spark)
+    val sqlText = "MERGE INTO A USING B ON A.ID=B.ID WHEN NOT MATCHED AND B.ID=7 THEN INSERT (A.ID,A.PRICE) VALUES (B.ID,B.PRICE)"
     executeMergeSqlText(spark, sqlText)
     println("Show table A")
     spark.sql(s"""SELECT * FROM A""").show()
