@@ -24,10 +24,10 @@ import org.apache.spark.sql.execution.command.mutation.merge._
 import org.apache.spark.sql.functions.col
 
 case class MergeIntoSQLCommand(sourceTable: TmpTable,
-                               targetTable: TmpTable,
-                               mergeCondition: Expression,
-                               mergeExpression: Seq[Expression],
-                               mergeActions: Seq[MergeAction])
+    targetTable: TmpTable,
+    mergeCondition: Expression,
+    mergeExpression: Seq[Expression],
+    mergeActions: Seq[MergeAction])
   extends AtomicRunnableCommand {
 
   override def processMetadata(sparkSession: SparkSession): Seq[Row] = {
@@ -37,8 +37,8 @@ case class MergeIntoSQLCommand(sourceTable: TmpTable,
 
   override def processData(sparkSession: SparkSession): Seq[Row] = {
 
-    val srcDf = sparkSession.sql(s"""SELECT * FROM ${sourceTable.getTable}""")
-    val tgDf = sparkSession.sql(s"""SELECT * FROM ${targetTable.getTable}""")
+    val srcDf = sparkSession.sql(s"""SELECT * FROM ${ sourceTable.getTable }""")
+    val tgDf = sparkSession.sql(s"""SELECT * FROM ${ targetTable.getTable }""")
 
     var matches = Seq.empty[MergeMatch]
     // Length of MergeExpression
@@ -58,7 +58,8 @@ case class MergeIntoSQLCommand(sourceTable: TmpTable,
             val tgCols = tgDf.columns
             action.updateMap = Map[Column, Column]()
             for (i <- srcCols.indices) {
-              action.updateMap.+=(col(tgCols.apply(i)) -> col(sourceTable.getTable + "." + srcCols.apply(i)))
+              action.updateMap
+                .+=(col(tgCols.apply(i)) -> col(sourceTable.getTable + "." + srcCols.apply(i)))
             }
           } else {
             // if not star, it may contains fewer cols and may be expression rather than col
@@ -71,7 +72,8 @@ case class MergeIntoSQLCommand(sourceTable: TmpTable,
             val tgCols = tgDf.columns
             action.insertMap = Map[Column, Column]()
             for (i <- srcCols.indices) {
-              action.insertMap.+=(col(tgCols.apply(i)) -> col(sourceTable.getTable + "." + srcCols.apply(i)))
+              action.insertMap
+                .+=(col(tgCols.apply(i)) -> col(sourceTable.getTable + "." + srcCols.apply(i)))
             }
           } else {
             // if not star, it may contains fewer cols and may be expression rather than col
@@ -89,7 +91,8 @@ case class MergeIntoSQLCommand(sourceTable: TmpTable,
           matches ++= Seq(WhenNotMatched().addAction(currAction))
         }
       } else {
-        // Since the mergeExpression is not null, we need to Initialize the WhenMatched/WhenNotMatched with the Expression
+        // Since the mergeExpression is not null, we need to Initialize the
+        // WhenMatched/WhenNotMatched with the Expression
         // Check the example to see how they initialize the matches
         val carbonMergeExpression: Option[Column] = Option(Column(currExpression))
         if (currAction.isInstanceOf[DeleteAction] || currAction.isInstanceOf[UpdateAction]) {
@@ -102,15 +105,13 @@ case class MergeIntoSQLCommand(sourceTable: TmpTable,
 
     val joinExpression = Column(mergeCondition)
 
-
-    //todo: Build the mergeColumn Map from mergeCondition
-    val mergeDataSetMatches: MergeDataSetMatches = MergeDataSetMatches(joinExpression, matches.toList)
+    // todo: Build the mergeColumn Map from mergeCondition
+    val mergeDataSetMatches: MergeDataSetMatches = MergeDataSetMatches(joinExpression,
+      matches.toList)
 
     CarbonMergeDataSetCommand(tgDf, srcDf, mergeDataSetMatches).run(sparkSession)
     Seq.empty
   }
 
   override protected def opName: String = "MERGE SQL COMMAND"
-
-
 }

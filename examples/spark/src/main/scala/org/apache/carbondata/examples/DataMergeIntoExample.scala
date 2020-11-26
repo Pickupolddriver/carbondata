@@ -19,10 +19,11 @@ package org.apache.carbondata.examples
 
 import CarbonSqlCodeGen.{CarbonSqlBaseLexer, CarbonSqlBaseParser}
 import org.antlr.v4.runtime.{CharStreams, CommonTokenStream}
-import org.apache.carbondata.examples.util.ExampleUtils
+import org.apache.spark.sql.{MergeIntoSQLCommand, AntlrSqlVisitor, SparkSession, SQLConf}
 import org.apache.spark.sql.execution.SparkSqlParser
-import org.apache.spark.sql.{MergeIntoSQLCommand, SQLConf, SimpleSqlVisitor, SparkSession}
 import org.apache.spark.util.SparkUtil.{convertExpressionList, convertMergeActionList}
+
+import org.apache.carbondata.examples.util.ExampleUtils
 
 object DataMergeIntoExample {
 
@@ -35,7 +36,7 @@ object DataMergeIntoExample {
     updateSpecificColWithExpressionExample(spark)
     insertExampleBody(spark)
     insertWithExpressionExample(spark)
-    insertSpecificColWithExpressionExample(spark)
+//    insertSpecificColWithExpressionExample(spark)
     spark.close()
   }
 
@@ -78,10 +79,8 @@ object DataMergeIntoExample {
     spark.sql(s"""INSERT INTO B VALUES (5,5,"TX (updated)")""")
     spark.sql(s"""INSERT INTO B VALUES (7,7,"LO (updated)")""")
 
-
     spark.sql(s"""SELECT count(*) FROM B""").show()
     spark.sql(s"""SELECT * FROM B""").show()
-
   }
 
   def dropTables(spark: SparkSession): Unit = {
@@ -91,7 +90,7 @@ object DataMergeIntoExample {
 
   def executeMergeSqlText(spark: SparkSession, sqlText: String): Unit = {
     val sparkParser = new SparkSqlParser(new SQLConf)
-    val visitor = new SimpleSqlVisitor(sparkParser)
+    val visitor = new AntlrSqlVisitor(sparkParser)
     val lexer = new CarbonSqlBaseLexer(CharStreams.fromString(sqlText))
     val tokenStream = new CommonTokenStream(lexer)
     val parser = new CarbonSqlBaseParser(tokenStream)
@@ -113,7 +112,6 @@ object DataMergeIntoExample {
     spark.sql(s"""SELECT * FROM A""").show()
     dropTables(spark)
   }
-
 
   def deleteWithExpressionExample(spark: SparkSession): Unit = {
     dropTables(spark)
@@ -148,8 +146,9 @@ object DataMergeIntoExample {
   def updateSpecificColWithExpressionExample(spark: SparkSession): Unit = {
     dropTables(spark)
     initTable(spark)
-    //In this example, it will only update the state
-    val sqlText = "MERGE INTO A USING B ON A.ID=B.ID WHEN MATCHED AND A.ID=2 THEN UPDATE SET STATE=B.STATE"
+    // In this example, it will only update the state
+    val sqlText = "MERGE INTO A USING B ON A.ID=B.ID WHEN MATCHED AND A.ID=2 THEN UPDATE SET " +
+                  "STATE=B.STATE"
     executeMergeSqlText(spark, sqlText)
     println("Show table A")
     spark.sql(s"""SELECT * FROM A""").show()
@@ -159,7 +158,8 @@ object DataMergeIntoExample {
   def updateSpecificMultiColWithExpressionExample(spark: SparkSession): Unit = {
     dropTables(spark)
     initTable(spark)
-    val sqlText = "MERGE INTO A USING B ON A.ID=B.ID WHEN MATCHED AND A.ID=2 THEN UPDATE SET A.STATE=B.STATE, A.PRICE=B.PRICE"
+    val sqlText = "MERGE INTO A USING B ON A.ID=B.ID WHEN MATCHED AND A.ID=2 THEN UPDATE SET A" +
+                  ".STATE=B.STATE, A.PRICE=B.PRICE"
     executeMergeSqlText(spark, sqlText)
     println("Show table A")
     spark.sql(s"""SELECT * FROM A""").show()
@@ -189,7 +189,8 @@ object DataMergeIntoExample {
   def insertSpecificColWithExpressionExample(spark: SparkSession): Unit = {
     dropTables(spark)
     initTable(spark)
-    val sqlText = "MERGE INTO A USING B ON A.ID=B.ID WHEN NOT MATCHED AND B.ID=7 THEN INSERT (A.ID,A.PRICE) VALUES (B.ID,B.PRICE)"
+    val sqlText = "MERGE INTO A USING B ON A.ID=B.ID WHEN NOT MATCHED AND B.ID=7 THEN INSERT (A" +
+                  ".ID,A.PRICE) VALUES (B.ID,B.PRICE)"
     executeMergeSqlText(spark, sqlText)
     println("Show table A")
     spark.sql(s"""SELECT * FROM A""").show()
