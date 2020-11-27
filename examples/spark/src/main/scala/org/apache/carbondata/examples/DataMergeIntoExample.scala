@@ -17,11 +17,7 @@
 
 package org.apache.carbondata.examples
 
-import CarbonSqlCodeGen.{CarbonSqlBaseLexer, CarbonSqlBaseParser}
-import org.antlr.v4.runtime.{CharStreams, CommonTokenStream}
-import org.apache.spark.sql.{MergeIntoSQLCommand, AntlrSqlVisitor, SparkSession, SQLConf}
-import org.apache.spark.sql.execution.SparkSqlParser
-import org.apache.spark.util.SparkUtil.{convertExpressionList, convertMergeActionList}
+import org.apache.spark.sql.SparkSession
 
 import org.apache.carbondata.examples.util.ExampleUtils
 
@@ -36,7 +32,8 @@ object DataMergeIntoExample {
     updateSpecificColWithExpressionExample(spark)
     insertExampleBody(spark)
     insertWithExpressionExample(spark)
-//    insertSpecificColWithExpressionExample(spark)
+    // todo deal with the exception
+    // insertSpecificColWithExpressionExample(spark)
     spark.close()
   }
 
@@ -44,7 +41,6 @@ object DataMergeIntoExample {
     spark.sql("DROP TABLE IF EXISTS A")
     spark.sql("DROP TABLE IF EXISTS B")
 
-    // Create table
     spark.sql(
       s"""
          | CREATE TABLE IF NOT EXISTS A(
@@ -70,17 +66,11 @@ object DataMergeIntoExample {
     spark.sql(s"""INSERT INTO A VALUES (3,300,"NH")""")
     spark.sql(s"""INSERT INTO A VALUES (4,400,"FL")""")
 
-    spark.sql(s"""SELECT count(*) FROM A""").show()
-    spark.sql(s"""SELECT * FROM A""").show()
-
     spark.sql(s"""INSERT INTO B VALUES (1,1,"MA (updated)")""")
     spark.sql(s"""INSERT INTO B VALUES (2,3,"NY (updated)")""")
     spark.sql(s"""INSERT INTO B VALUES (3,3,"CA (updated)")""")
     spark.sql(s"""INSERT INTO B VALUES (5,5,"TX (updated)")""")
     spark.sql(s"""INSERT INTO B VALUES (7,7,"LO (updated)")""")
-
-    spark.sql(s"""SELECT count(*) FROM B""").show()
-    spark.sql(s"""SELECT * FROM B""").show()
   }
 
   def dropTables(spark: SparkSession): Unit = {
@@ -88,27 +78,11 @@ object DataMergeIntoExample {
     spark.sql("DROP TABLE IF EXISTS B")
   }
 
-  def executeMergeSqlText(spark: SparkSession, sqlText: String): Unit = {
-    val sparkParser = new SparkSqlParser(new SQLConf)
-    val visitor = new AntlrSqlVisitor(sparkParser)
-    val lexer = new CarbonSqlBaseLexer(CharStreams.fromString(sqlText))
-    val tokenStream = new CommonTokenStream(lexer)
-    val parser = new CarbonSqlBaseParser(tokenStream)
-    val mergeInto = visitor.visitMergeInto(parser.mergeInto)
-    MergeIntoSQLCommand.apply(mergeInto.getSource,
-      mergeInto.getTarget,
-      mergeInto.getMergeCondition,
-      convertExpressionList(mergeInto.getMergeExpressions),
-      convertMergeActionList(mergeInto.getMergeActions)
-    ).processData(spark)
-  }
-
   def deleteExampleBody(spark: SparkSession): Unit = {
     dropTables(spark)
     initTable(spark)
     val sqlText = "MERGE INTO A USING B ON A.ID=B.ID WHEN MATCHED THEN DELETE"
-    executeMergeSqlText(spark, sqlText)
-    println("Show table A")
+    spark.sql(sqlText)
     spark.sql(s"""SELECT * FROM A""").show()
     dropTables(spark)
   }
@@ -117,8 +91,7 @@ object DataMergeIntoExample {
     dropTables(spark)
     initTable(spark)
     val sqlText = "MERGE INTO A USING B ON A.ID=B.ID WHEN MATCHED AND B.ID=2 THEN DELETE"
-    executeMergeSqlText(spark, sqlText)
-    println("Show table A")
+    spark.sql(sqlText)
     spark.sql(s"""SELECT * FROM A""").show()
     dropTables(spark)
   }
@@ -127,8 +100,7 @@ object DataMergeIntoExample {
     dropTables(spark)
     initTable(spark)
     val sqlText = "MERGE INTO A USING B ON A.ID=B.ID WHEN MATCHED THEN UPDATE SET *"
-    executeMergeSqlText(spark, sqlText)
-    println("Show table A")
+    spark.sql(sqlText)
     spark.sql(s"""SELECT * FROM A""").show()
     dropTables(spark)
   }
@@ -137,8 +109,7 @@ object DataMergeIntoExample {
     dropTables(spark)
     initTable(spark)
     val sqlText = "MERGE INTO A USING B ON A.ID=B.ID WHEN MATCHED AND A.ID=2 THEN UPDATE SET *"
-    executeMergeSqlText(spark, sqlText)
-    println("Show table A")
+    spark.sql(sqlText)
     spark.sql(s"""SELECT * FROM A""").show()
     dropTables(spark)
   }
@@ -149,8 +120,7 @@ object DataMergeIntoExample {
     // In this example, it will only update the state
     val sqlText = "MERGE INTO A USING B ON A.ID=B.ID WHEN MATCHED AND A.ID=2 THEN UPDATE SET " +
                   "STATE=B.STATE"
-    executeMergeSqlText(spark, sqlText)
-    println("Show table A")
+    spark.sql(sqlText)
     spark.sql(s"""SELECT * FROM A""").show()
     dropTables(spark)
   }
@@ -160,8 +130,7 @@ object DataMergeIntoExample {
     initTable(spark)
     val sqlText = "MERGE INTO A USING B ON A.ID=B.ID WHEN MATCHED AND A.ID=2 THEN UPDATE SET A" +
                   ".STATE=B.STATE, A.PRICE=B.PRICE"
-    executeMergeSqlText(spark, sqlText)
-    println("Show table A")
+    spark.sql(sqlText)
     spark.sql(s"""SELECT * FROM A""").show()
     dropTables(spark)
   }
@@ -170,8 +139,7 @@ object DataMergeIntoExample {
     dropTables(spark)
     initTable(spark)
     val sqlText = "MERGE INTO A USING B ON A.ID=B.ID WHEN NOT MATCHED THEN INSERT *"
-    executeMergeSqlText(spark, sqlText)
-    println("Show table A")
+    spark.sql(sqlText)
     spark.sql(s"""SELECT * FROM A""").show()
     dropTables(spark)
   }
@@ -180,8 +148,7 @@ object DataMergeIntoExample {
     dropTables(spark)
     initTable(spark)
     val sqlText = "MERGE INTO A USING B ON A.ID=B.ID WHEN NOT MATCHED AND B.ID=7 THEN INSERT *"
-    executeMergeSqlText(spark, sqlText)
-    println("Show table A")
+    spark.sql(sqlText)
     spark.sql(s"""SELECT * FROM A""").show()
     dropTables(spark)
   }
@@ -191,8 +158,7 @@ object DataMergeIntoExample {
     initTable(spark)
     val sqlText = "MERGE INTO A USING B ON A.ID=B.ID WHEN NOT MATCHED AND B.ID=7 THEN INSERT (A" +
                   ".ID,A.PRICE) VALUES (B.ID,B.PRICE)"
-    executeMergeSqlText(spark, sqlText)
-    println("Show table A")
+    spark.sql(sqlText)
     spark.sql(s"""SELECT * FROM A""").show()
     dropTables(spark)
   }
