@@ -17,14 +17,14 @@
 
 package org.apache.spark.util
 
+import scala.collection.JavaConverters.{mapAsScalaMapConverter, _}
+
+import org.apache.spark.{SPARK_VERSION, TaskContext}
+import org.apache.spark.sql.{Column, SparkSession}
 import org.apache.spark.sql.catalyst.expressions.Expression
 import org.apache.spark.sql.execution.SQLExecution.EXECUTION_ID_KEY
 import org.apache.spark.sql.execution.command.mutation.merge.MergeAction
 import org.apache.spark.sql.types._
-import org.apache.spark.sql.{Column, SparkSession}
-import org.apache.spark.{SPARK_VERSION, TaskContext}
-
-import scala.collection.JavaConverters.{mapAsScalaMapConverter, _}
 
 /*
  * this object use to handle file splits
@@ -34,7 +34,6 @@ object SparkUtil {
   def convertMap(map: java.util.Map[Column, Column]): Map[Column, Column] = {
     map.asScala.toMap
   }
-
 
   def convertExpressionList(list: java.util.List[Expression]): List[Expression] = {
     list.asScala.toList

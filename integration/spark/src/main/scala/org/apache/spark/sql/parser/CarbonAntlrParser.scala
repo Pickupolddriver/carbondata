@@ -17,7 +17,7 @@
 
 package org.apache.spark.sql.parser
 
-import CarbonSqlCodeGen.{CarbonSqlBaseLexer, CarbonSqlBaseParser}
+import carbonSql.codeGen.{CarbonSqlBaseLexer, CarbonSqlBaseParser}
 import org.antlr.v4.runtime.{CharStreams, CommonTokenStream}
 import org.apache.spark.sql.{AntlrSqlVisitor, MergeIntoSQLCommand}
 import org.apache.spark.sql.catalyst.parser.ParserInterface
