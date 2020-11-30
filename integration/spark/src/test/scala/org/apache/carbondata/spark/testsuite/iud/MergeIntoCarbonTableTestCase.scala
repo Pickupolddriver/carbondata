@@ -72,9 +72,7 @@ class MergeIntoCarbonTableTestCase extends QueryTest with BeforeAndAfterEach {
   }
 
   test("test merge into delete") {
-    sql(
-      """
-            MERGE INTO A USING B ON A.ID=B.ID WHEN MATCHED THEN DELETE""")
+    sql("""MERGE INTO A USING B ON A.ID=B.ID WHEN MATCHED THEN DELETE""")
 
     checkAnswer(sql("select * from A"), Seq(Row(4, 400, "FL")))
   }
