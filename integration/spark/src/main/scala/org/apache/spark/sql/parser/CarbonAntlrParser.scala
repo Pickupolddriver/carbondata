@@ -27,6 +27,10 @@ class CarbonAntlrParser(sparkParser: ParserInterface) {
 
   def parse(sqlText: String): AtomicRunnableCommand = {
     // Todo DO NOT NEW OBJECTS HERE
+    if (!(sqlText.startsWith("MERGE") || sqlText.startsWith("merge"))) {
+      throw new UnsupportedOperationException(
+        "Antlr SQL Parser will only deal with Merge Into SQL Command")
+    }
     val visitor = new AntlrSqlVisitor(sparkParser)
     val lexer = new CarbonSqlBaseLexer(CharStreams.fromString(sqlText))
     val tokenStream = new CommonTokenStream(lexer)

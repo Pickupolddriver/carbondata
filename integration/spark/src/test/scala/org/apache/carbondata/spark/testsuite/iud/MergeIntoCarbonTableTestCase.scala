@@ -80,8 +80,7 @@ class MergeIntoCarbonTableTestCase extends QueryTest with BeforeAndAfterEach {
   }
 
   test("test merge into delete with condition") {
-    sql(
-      """MERGE INTO A USING B ON A.ID=B.ID WHEN MATCHED AND B.ID=2 THEN DELETE""")
+    sql("""MERGE INTO A USING B ON A.ID=B.ID WHEN MATCHED AND B.ID=2 THEN DELETE""")
 
     checkAnswer(sql("select * from A"),
       Seq(Row(1, 100, "MA"), Row(3, 300, "NH"), Row(4, 400, "FL")))
@@ -89,9 +88,7 @@ class MergeIntoCarbonTableTestCase extends QueryTest with BeforeAndAfterEach {
 
   // todo check this Test Case
   test("test merge into update all cols") {
-    sql(
-      """
-              MERGE INTO A USING B ON A.ID=B.ID WHEN MATCHED THEN UPDATE SET *""")
+    sql("""MERGE INTO A USING B ON A.ID=B.ID WHEN MATCHED THEN UPDATE SET *""")
 
     checkAnswer(sql("select * from A"),
       Seq(Row(1, 1, "MA (updated)"),
@@ -101,18 +98,14 @@ class MergeIntoCarbonTableTestCase extends QueryTest with BeforeAndAfterEach {
   }
 
   test("test merge into update all cols with condition") {
-    sql(
-      """
-            MERGE INTO A USING B ON A.ID=B.ID WHEN MATCHED AND A.ID=2 THEN UPDATE SET *""")
+    sql("""MERGE INTO A USING B ON A.ID=B.ID WHEN MATCHED AND A.ID=2 THEN UPDATE SET *""")
 
     checkAnswer(sql("select * from A"),
       Seq(Row(1, 100, "MA"), Row(2, 3, "NY (updated)"), Row(3, 300, "NH"), Row(4, 400, "FL")))
   }
 
   test("test merge into insert all cols") {
-    sql(
-      """
-            MERGE INTO A USING B ON A.ID=B.ID WHEN NOT MATCHED THEN INSERT *""")
+    sql("""MERGE INTO A USING B ON A.ID=B.ID WHEN NOT MATCHED THEN INSERT *""")
 
     checkAnswer(sql("select * from A"),
       Seq(Row(1, 100, "MA"),
@@ -124,10 +117,7 @@ class MergeIntoCarbonTableTestCase extends QueryTest with BeforeAndAfterEach {
   }
 
   test("test merge into insert all cols with condition") {
-    sql(
-      """
-           MERGE INTO A USING B ON A.ID=B.ID WHEN NOT MATCHED AND B.ID=7 THEN INSERT *""")
-
+    sql("""MERGE INTO A USING B ON A.ID=B.ID WHEN NOT MATCHED AND B.ID=7 THEN INSERT *""")
     checkAnswer(sql("select * from A"),
       Seq(Row(1, 100, "MA"),
         Row(2, 200, "NY"),

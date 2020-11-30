@@ -25,13 +25,13 @@ object DataMergeIntoExample {
 
   def main(args: Array[String]) {
     val spark = ExampleUtils.createSparkSession("DataManagementExample")
-    //    deleteExampleBody(spark)
-    //    deleteWithExpressionExample(spark)
-    //    updateExampleBody(spark)
-    //    updateWithExpressionExample(spark)
-    //    updateSpecificColWithExpressionExample(spark)
+    deleteExampleBody(spark)
+    deleteWithExpressionExample(spark)
+    updateExampleBody(spark)
+    updateWithExpressionExample(spark)
+    updateSpecificColWithExpressionExample(spark)
     insertExampleBody(spark)
-    //    insertWithExpressionExample(spark)
+    insertWithExpressionExample(spark)
     // todo deal with the exception
     // insertSpecificColWithExpressionExample(spark)
     spark.close()
